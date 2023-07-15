@@ -4,5 +4,6 @@
 /.direnv
 
 /wrapper_cache
+/mods
 config.toml
 destinations.toml

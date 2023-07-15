@@ -23,8 +23,8 @@ in {
       '';
     };
     jvmArgs = mkOption {
-      type = types.listOf types.str;
-      default = [ "-Dlog4j2.formatMsgNoLookups=true" "-Xms1600M" "-Xmx1600M" ];
+      type = types.str;
+      default = "-Dlog4j2.formatMsgNoLookups=true -Xms1600M -Xmx1600M";
     };
     jvmPackage = mkOption {
       type = types.package;
@@ -45,6 +45,7 @@ in {
       description = "Nucleoid server-wrapper";
       wantedBy = [ "multi-user.target" ];
       script = ''
+      ${}
       '';
     };
   };
