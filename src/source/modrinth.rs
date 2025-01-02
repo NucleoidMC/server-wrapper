@@ -1,3 +1,4 @@
+use std::fmt::Write;
 use std::sync::Arc;
 
 use chrono::DateTime;
@@ -11,9 +12,10 @@ pub async fn load<'a>(
     cache: cache::Entry<'a>,
     project_id: &str,
     game_version: &Option<String>,
+    loader: &Option<String>,
     transform: &config::Transform,
 ) -> Result<cache::Reference> {
-    let latest_version = resolve_version(client, project_id, game_version).await?;
+    let latest_version = resolve_version(client, project_id, game_version, loader).await?;
     if let Some((hash, url, name)) = latest_version {
         use cache::UpdateResult::*;
         match cache.try_update(cache::Token::Sha512(hash)) {
@@ -39,8 +41,9 @@ async fn resolve_version(
     client: &Client,
     project_id: &str,
     game_version: &Option<String>,
+    loader: &Option<String>,
 ) -> Result<Option<(String, String, String)>> {
-    let mut versions = client.get_versions(project_id, game_version).await?;
+    let mut versions = client.get_versions(project_id, game_version, loader).await?;
     versions.sort_by_key(|v| v.date_published);
     // try latest versions first
     versions.reverse();
@@ -80,13 +83,24 @@ impl Client {
         &self,
         project_id: &str,
         game_version: &Option<String>,
+        loader: &Option<String>,
     ) -> Result<Vec<ProjectVersion>> {
-        let url = if let Some(game_version) = game_version {
+        let mut query = String::new();
+        if let Some(game_version) = game_version {
+            write!(&mut query, "game_versions=[\"{game_version}\"]").unwrap();
+        }
+        if let Some(loader) = loader {
+            if !query.is_empty() {
+                query.push('&');
+            }
+            write!(&mut query, "loaders=[\"{loader}\"]").unwrap();
+        }
+        let url = if !query.is_empty() {
             format!(
-                "{}/v2/project/{}/version?game_versions=[\"{}\"]",
+                "{}/v2/project/{}/version?{}",
                 Client::BASE_URL,
                 project_id,
-                game_version
+                query,
             )
         } else {
             format!("{}/v2/project/{}/version", Client::BASE_URL, project_id)

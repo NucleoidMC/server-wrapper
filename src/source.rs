@@ -37,7 +37,8 @@ pub async fn load<'a>(
         Source::Modrinth {
             project_id,
             game_version,
-        } => modrinth::load(&ctx.modrinth, cache, project_id, game_version, transform).await,
+            loader,
+        } => modrinth::load(&ctx.modrinth, cache, project_id, game_version, loader, transform).await,
         Source::Url { url } => http::load(&ctx.client, cache, url, transform).await,
         Source::Path { path } => path::load(cache, path, transform).await,
     }

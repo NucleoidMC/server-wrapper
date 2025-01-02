@@ -146,6 +146,7 @@ pub enum Source {
     Modrinth {
         project_id: String,
         game_version: Option<String>,
+        loader: Option<String>,
     },
     Url {
         url: String,
