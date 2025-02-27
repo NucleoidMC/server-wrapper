@@ -6,3 +6,5 @@
 /wrapper_cache
 config.toml
 destinations.toml
+*.jar
+*.zip

@@ -3,6 +3,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
+use config::loader::DestinationsLoader;
 use futures::FutureExt;
 use tokio::fs;
 
@@ -33,9 +34,20 @@ pub async fn main() {
     let config_path = std::env::args().nth(1).unwrap_or_else(|| "config.toml".to_owned());
     let destinations_path = std::env::args().nth(2).unwrap_or_else(|| "destinations.toml".to_owned());
 
+    let client = reqwest::Client::builder()
+        .gzip(true)
+        .user_agent("server-wrapper (https://github.com/NucleoidMC/server-wrapper)")
+        .build()
+        .unwrap();
+
     loop {
         let config: Config = config::load(&config_path).await;
-        let destinations: config::Destinations = config::load(&destinations_path).await;
+        let destinations_loader = if let Some(destinations_url) = config.destinations_url {
+            DestinationsLoader::from_url(destinations_url, client.clone())
+        } else {
+            DestinationsLoader::from_path(&destinations_path)
+        };
+        let destinations: config::Destinations = destinations_loader.load().await;
 
         let min_restart_interval = Duration::from_secs(config.min_restart_interval_seconds);
 
@@ -44,17 +56,12 @@ pub async fn main() {
             None => StatusWriter::none(),
         };
 
-        let client = reqwest::Client::builder()
-            .gzip(true)
-            .user_agent("server-wrapper (https://github.com/NucleoidMC/server-wrapper)")
-            .build()
-            .unwrap();
         let github = source::github::Client::new(config.tokens.github.clone());
         let modrinth = source::modrinth::Client::new(client.clone());
         let ctx = Context {
             github,
             modrinth,
-            client,
+            client: client.clone(),
             status,
         };
 

@@ -10,17 +10,20 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 pub use destinations::*;
 
 mod destinations;
+pub mod loader;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     pub run: Vec<String>,
-    #[serde(default = "Default::default")]
+    #[serde(default)]
     pub status: Status,
-    #[serde(default = "Default::default")]
+    #[serde(default)]
     pub tokens: Tokens,
     pub triggers: HashMap<String, Trigger>,
     #[serde(default = "default_min_restart_interval")]
     pub min_restart_interval_seconds: u64,
+    #[serde(default)]
+    pub destinations_url: Option<url::Url>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -54,6 +57,7 @@ impl Default for Config {
                 triggers
             },
             min_restart_interval_seconds: default_min_restart_interval(),
+            destinations_url: None,
         }
     }
 }

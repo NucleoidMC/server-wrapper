@@ -67,7 +67,7 @@ async fn resolve_version(
 
 #[derive(Clone)]
 pub struct Client {
-    client: Arc<reqwest::Client>,
+    client: reqwest::Client,
 }
 
 impl Client {
@@ -75,7 +75,7 @@ impl Client {
 
     pub fn new(client: reqwest::Client) -> Client {
         Client {
-            client: Arc::new(client),
+            client,
         }
     }
 
