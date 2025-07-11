@@ -34,8 +34,16 @@ pub async fn main() {
     let destinations_path = std::env::args().nth(2).unwrap_or_else(|| "destinations.toml".to_owned());
 
     loop {
-        let config: Config = config::load(&config_path).await;
+        let mut config: Config = config::load(&config_path).await;
         let destinations: config::Destinations = config::load(&destinations_path).await;
+
+        if config.run.is_none() && config.restart {
+            eprintln!("warning: `restart = true` has no effect if `run` is not set");
+            config.restart = false;
+        }
+
+        // make immutable just to be sure
+        let config = config;
 
         let min_restart_interval = Duration::from_secs(config.min_restart_interval_seconds);
 
@@ -102,28 +110,34 @@ pub async fn main() {
 
         ctx.status.write(payload);
 
-        let start = Instant::now();
+        if let Some(run) = config.run {
+            let start = Instant::now();
 
-        let mut executor = Executor::new(config.run);
-        if let Err(err) = executor.run().await {
-            eprintln!("server exited with error: {:?}", err);
-        } else {
-            println!("server closed");
-        }
+            let mut executor = Executor::new(run);
+            if let Err(err) = executor.run().await {
+                eprintln!("server exited with error: {:?}", err);
+            } else {
+                println!("server closed");
+            }
 
-        let interval = Instant::now() - start;
-        if interval < min_restart_interval {
-            println!("server restarted very quickly! waiting a bit...");
+            let interval = Instant::now() - start;
+            if config.restart && interval < min_restart_interval {
+                println!("server restarted very quickly! waiting a bit...");
 
-            let delay = min_restart_interval - interval;
-            ctx.status.write(format!(
-                "Server restarted too quickly! Waiting for {} seconds...",
-                delay.as_secs()
-            ));
+                let delay = min_restart_interval - interval;
+                ctx.status.write(format!(
+                    "Server restarted too quickly! Waiting for {} seconds...",
+                    delay.as_secs()
+                ));
 
-            tokio::time::sleep(delay.into()).await;
-        } else {
-            ctx.status.write("Server closed! Restarting...");
+                tokio::time::sleep(delay.into()).await;
+            } else {
+                ctx.status.write(if config.restart {
+                    "Server closed! Restarting..."
+                } else {
+                    "Server closed!"
+                });
+            }
         }
     }
 }

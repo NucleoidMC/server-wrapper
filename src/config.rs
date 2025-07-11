@@ -13,7 +13,8 @@ mod destinations;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
-    pub run: Vec<String>,
+    #[serde(default)]
+    pub run: Option<Vec<String>>,
     #[serde(default = "Default::default")]
     pub status: Status,
     #[serde(default = "Default::default")]
@@ -21,6 +22,8 @@ pub struct Config {
     pub triggers: HashMap<String, Trigger>,
     #[serde(default = "default_min_restart_interval")]
     pub min_restart_interval_seconds: u64,
+    #[serde()]
+    pub restart: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -45,7 +48,7 @@ pub enum Trigger {
 impl Default for Config {
     fn default() -> Self {
         Config {
-            run: vec!["java -jar fabric-server-launch.jar".to_owned()],
+            run: Some(vec!["java -jar fabric-server-launch.jar".to_owned()]),
             tokens: Tokens::default(),
             status: Status::default(),
             triggers: {
@@ -54,6 +57,7 @@ impl Default for Config {
                 triggers
             },
             min_restart_interval_seconds: default_min_restart_interval(),
+            restart: default_restart(),
         }
     }
 }
@@ -62,13 +66,17 @@ fn default_min_restart_interval() -> u64 {
     240
 }
 
+fn default_restart() -> bool {
+    true
+}
+
 pub async fn load<P, T>(path: P) -> T
 where
     P: AsRef<Path>,
     T: Serialize + DeserializeOwned + Default,
 {
     let path = path.as_ref();
-    if path.exists() {
+    let mut config = if path.exists() {
         read_config(path).await.expect("failed to read config")
     } else {
         let config = T::default();
@@ -76,7 +84,9 @@ where
             .await
             .expect("failed to write default config");
         config
-    }
+    };
+
+    config
 }
 
 async fn write_config<T: Serialize>(path: &Path, config: &T) -> io::Result<()> {
