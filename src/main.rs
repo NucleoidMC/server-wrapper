@@ -30,8 +30,12 @@ pub struct Context {
 
 #[tokio::main]
 pub async fn main() {
-    let config_path = std::env::args().nth(1).unwrap_or_else(|| "config.toml".to_owned());
-    let destinations_path = std::env::args().nth(2).unwrap_or_else(|| "destinations.toml".to_owned());
+    let config_path = std::env::args()
+        .nth(1)
+        .unwrap_or_else(|| "config.toml".to_owned());
+    let destinations_path = std::env::args()
+        .nth(2)
+        .unwrap_or_else(|| "destinations.toml".to_owned());
 
     loop {
         let mut config: Config = config::load(&config_path).await;
@@ -138,6 +142,10 @@ pub async fn main() {
                     "Server closed!"
                 });
             }
+        }
+
+        if !config.restart {
+            break;
         }
     }
 }
