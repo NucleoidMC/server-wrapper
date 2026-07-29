@@ -71,7 +71,7 @@ pub async fn main() {
         };
 
         let destinations: Vec<PreparedDestination> =
-            prepare_destinations(&ctx, destinations.destinations).await;
+            prepare_destinations(&ctx, destinations.destinations, config.fallback_to_cache).await;
 
         let changed_sources: Vec<_> = destinations
             .iter()
@@ -153,13 +153,14 @@ pub async fn main() {
 async fn prepare_destinations(
     ctx: &Context,
     destinations: HashMap<String, config::Destination>,
+    fallback_to_cache: bool
 ) -> Vec<PreparedDestination> {
     let mut futures = Vec::new();
 
     for (destination_name, destination) in destinations {
         let ctx = ctx.clone();
         let future = tokio::spawn(async move {
-            prepare_destination(&ctx, &destination_name, &destination)
+            prepare_destination(&ctx, &destination_name, &destination, fallback_to_cache)
                 .await
                 .expect(&format!(
                     "failed to prepare destination '{}'",
@@ -177,6 +178,8 @@ async fn prepare_destination(
     ctx: &Context,
     destination_name: &str,
     destination: &config::Destination,
+    fallback_to_cache: bool
+
 ) -> Result<PreparedDestination> {
     let cache_root = Path::new(CACHE_ROOT).join(destination_name);
 
@@ -190,7 +193,7 @@ async fn prepare_destination(
             match source::load(ctx, cache_entry, source, &source_set.transform).await {
                 Ok(reference) => cache_files.push((key.clone(), reference)),
                 Err(err) => {
-                    match cache.entry(key.clone()).get_existing() {
+                    match if fallback_to_cache { cache.entry(key.clone()).get_existing() } else { None } {
                         Some(reference) => {
                             eprintln!("failed to load {}: {:?}! Loading from cache.", key, err);
                             ctx.status
