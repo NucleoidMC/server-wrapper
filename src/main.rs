@@ -190,9 +190,20 @@ async fn prepare_destination(
             match source::load(ctx, cache_entry, source, &source_set.transform).await {
                 Ok(reference) => cache_files.push((key.clone(), reference)),
                 Err(err) => {
-                    eprintln!("failed to load {}: {:?}! excluding.", key, err);
-                    ctx.status
-                        .write(format!("Failed to load {}... Excluding!", key));
+                    match cache.entry(key.clone()).get_existing() {
+                        Some(reference) => {
+                            eprintln!("failed to load {}: {:?}! Loading from cache.", key, err);
+                            ctx.status
+                                .write(format!("Failed to load {}... Loading from cache!", key));
+                            cache_files.push((key.clone(), reference))
+                        }
+                        None => {
+                            eprintln!("failed to load {}: {:?}! excluding.", key, err);
+                            ctx.status
+                                .write(format!("Failed to load {}... Excluding!", key));
+                        }
+                    }
+                    
                 }
             }
         }
