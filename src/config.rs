@@ -22,8 +22,10 @@ pub struct Config {
     pub triggers: HashMap<String, Trigger>,
     #[serde(default = "default_min_restart_interval")]
     pub min_restart_interval_seconds: u64,
-    #[serde()]
+    #[serde(default = "default_restart")]
     pub restart: bool,
+    #[serde(default = "default_fallback_to_cache")]
+    pub fallback_to_cache: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -58,6 +60,7 @@ impl Default for Config {
             },
             min_restart_interval_seconds: default_min_restart_interval(),
             restart: default_restart(),
+            fallback_to_cache: default_fallback_to_cache()
         }
     }
 }
@@ -67,6 +70,10 @@ fn default_min_restart_interval() -> u64 {
 }
 
 fn default_restart() -> bool {
+    true
+}
+
+fn default_fallback_to_cache() -> bool {
     true
 }
 
